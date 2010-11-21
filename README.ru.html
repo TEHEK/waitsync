@@ -1,0 +1,193 @@
+<h4>Задача </h4>
+Допустим вы хотите выполнить два AJAX запроса на сервер и вызвать функцию после того, как оба будут закончены.
+
+Небольшая загвоздка в том, что вы не знаете, какой из этих запросов будет закончен первым и не знаете, на кого вешать callback. 
+
+Можно завести глобальную переменную и по окончании каждого запроса проверять, завершился ли другой запрос.
+
+Собственно, этим и занимается мой небольшой класс WaitSync =)
+
+<h4>WaitSync.js</h4>
+
+Пользоваться элементарно просто:
+
+1. Создаем объект типа <em>WaitSync</em>, передав в конструктор <strong>callback</strong> функцию, которая будет вызвана после того, как отработают нужные <strong>задачи</strong>.
+<code><pre>
+	var vulture = new WaitSync(function () {
+		console.debug('Start eating: ', arguments);
+	});
+</pre></code>
+
+2. Вместо простого
+<code><pre>
+	$.getJSON(
+		'savannah/get_prey', 
+		function (data) {
+			console.log('... prey found: ' + data);
+		}
+	);
+	
+	$.getJSON(
+		'savannah/get_other_predators', 
+		function () {
+			console.log('... predators are done eating');
+		}
+	);
+</pre></code>
+
+"заворачиваем" задачи в метод <em>.wrap</em>
+<code><pre>
+	$.getJSON(
+		'savannah/get_prey', 
+		
+		vulture.wrap( 
+			
+			function (data) {
+				console.log('... prey found: ' + data);
+			}
+			
+		)
+	);
+	
+	$.getJSON(
+		'savannah/get_other_predators', 
+		vulture.wrap(
+			function () {
+				console.log('... predators are done eating');
+			}
+		)
+	);
+</pre></code>
+
+3. Все =) Как только будут выполнены оба AJAX запроса, стервятник начнет есть.
+
+
+<h4>Как это работает?</h4>
+
+Когда вы создаете объект <em>WaitSync</em>, вы передаете в качестве аргумента конструктору
+тот самый callback.
+
+Когда вы вызываете метод <em>.wrap</em> и передаете ему функцию, он создает из нее другую функцию, которая делает подсчет и проверку вызовов. В качестве второго аргумента также можно передать контекст (ссылку на объект, к которому можно будет обращаться через <em>this</em>). Если вам это действительно нужно... 
+
+То есть, фактически, класс делает за вас то, что вы сделали бы своими руками разок-другой, а потом решили бы написать нечто подобное :)
+
+
+<h4>Именованные/группированные задачи</h4>
+Предположим, вы делаете ajax запросы и вдобавок хотите обработать ошибки:
+<code><pre>
+
+	var monkeyBusiness = new WaitSync(function () {});
+	
+	$.ajax({
+		url: '/cgi-bin/palm-tree',
+		success: function (data) {
+			console.log(' eat bananas :) ');
+			
+		},
+		error: function (data) {
+			console.log(' eat banana peels :( ');
+		}
+	});
+	
+	$.ajax({
+		url: '/cgi-bin/monkey-party',
+		success: function (data) {
+			console.log(' dance :) ');
+		},
+		error: function (data) {
+			console.log(' make political party :( ');
+		}
+	});
+	
+</pre></code>
+
+Всегда будет выполнятся либо <em>success</em>, либо <em>error</em>. В случае возникновения любого из них нужно перестать ждать появления второго.
+
+Для этого достаточно просто придумать для задачи идентификатор (строковый или числовой) и передать его первым параметром <em>.wrap</em>
+
+<code><pre>
+	
+	var monkeyBusiness = new WaitSync(function () {
+		console.log('Yay!  :(|) End of the day');
+	});
+	
+	$.ajax({
+		url: '/cgi-bin/palm-tree',
+		success: 
+			monkeyBusiness.wrap(
+				'palmTree',
+				function (data) {
+					console.log(' eat bananas :) ');
+					
+					return "banana success";
+				}
+			),
+		error: 
+			monkeyBusiness.wrap(
+				'palmTree',
+				function (data) {
+					console.log(' eat banana peels :( ');
+					return "banana failure";
+				}
+			)
+		
+	});
+	
+	$.ajax({
+		url: '/cgi-bin/monkey-party',
+		success:
+			monkeyBusiness.wrap(
+				'monkeyParty',
+				function (data) {
+					console.log(' dance :) ');
+					
+					return "success";
+				}
+			),
+		error: 
+			monkeyBusiness.wrap(
+				'monkeyParty',
+				function (data) {
+					console.log(' make political party :( ');
+					
+					return "error";
+				}
+			)
+	});
+	
+</pre></code>
+
+Теперь callback выполнится как только мартышка слезет с пальмы, а другие закончат вечеринку.
+
+<h4>Бонус!</h4>
+На самом деле WaitSync собирает еще кое-какую информацию.
+
+В callback передается объект, содержащий немного полезной информации:
+<code><pre>
+	
+	var monkeyBusiness = new WaitSync(
+		function (result) {
+			console.log('Tasks were complete in the following order: ' + result.order.join(', '));
+			
+			console.log('Palm tree: ' + result.data['palmTree']);
+			console.log('Monkey party: ' + result.data['monkeyParty']);
+		}
+	);
+	
+</pre></code>
+
+В подмассиве <em>order</em> хранится порядок, в котором выполнились задачи.
+
+В подмассиве <em>groupOrder</em> хранится порядок только именованных задач/групп.
+
+В подмассиве <em>data</em> хранятся значения, которые вернули все именнованные задачи.
+
+
+<h4>Заключение</h4>
+Думаю, такая вещь достаточно редко нужна. В node.js могла бы пригодиться...
+
+В общем, вот =) Пользуйтесь на здоровье!
+
+https://github.com/TEHEK/waitsync/
+
+P.S.: пока писал пост, два раза переписывал API XD
