@@ -1,0 +1,62 @@
+<html>
+<body>
+<script src="waitsync.js"></script>
+<div id="output"></div>
+
+<script>
+
+
+	function message(msg) {
+		var p = document.getElementById("output");
+		p.innerHTML = p.innerHTML + "<p>"+msg+"</p>";
+	}
+
+   var chef = new WaitSync(
+  		function () {
+  			message('Starting cooking soup!');
+   	}
+   );
+  
+ 	// son will finish chopping in like 4 seconds
+   setTimeout(
+  		chef.wrapGroup('ingredients', function () {
+  
+  			// when meat is done
+  			message('Meat is ready');
+  		}),
+  		
+   	Math.floor(Math.random()*4000)		
+   );
+  
+   // daughter will finish cutting soon 
+   
+   var vegetables = {
+	    testVar: 2,
+		task: chef.wrapGroup('ingredients', function () {
+				// prepare vegetables
+				message('Vegetables are ready:' + arguments.length + " " + this.testVar);
+			})
+	};
+	
+	
+  setTimeout(	
+		function () {
+			vegetables.testVar = '(context passed)';
+			vegetables.task(1,2 ,3 ,4,5);
+		},
+  		Math.floor(Math.random()*4000)
+   );
+  
+   var soupWithNoodles = false;
+   if (soupWithNoodles) {
+  		setTimeout(
+  			chef.wrap(function () {
+  				message('Noodles are ready');
+  			}),
+  			1000
+  		);
+   }
+ 
+
+</script>
+</body></html>
