@@ -1,0 +1,76 @@
+<html>
+<body>
+<script src="waitsync.js"></script>
+<div id="output"></div>
+
+<script>
+
+
+	function message(msg) {
+		var p = document.getElementById("output");
+		p.innerHTML = p.innerHTML + "<p>"+msg+"</p>";
+	}
+
+	/*
+	 * In this example you will see how to use named groups/tasks:
+	 */
+	
+	// putting it in a closure to avoid polluting global namespace
+	(function () {
+		
+		/*
+		 * Creating a callback.
+		 */
+		var fileLoadTrigger = new WaitSync(
+		
+			function (response) {
+				// bonus: response argument contains return values of 
+				// named tasks
+				
+				message('Tasks complete: ' + response.data['file']);
+				message(response.data['donut'] + " donut(s) eaten");
+			}
+		);
+		
+		// load file. Emulate 0-5 sec file read
+		// assign id = 'file' to this task:
+		setTimeout(
+			fileLoadTrigger.wrap(
+				'file',
+				function () {
+					return 'File loaded successfully!';
+				}
+			),
+			Math.floor(Math.random()*5000)
+		);
+		
+		// if file was not read in 5 sec, task will be considered complete
+		// assign the same id = 'file' to this task.
+		// Now whenever one of the defined 'file' tasks finishes, the 
+		// fileLoadTrigger will consider both of them complete may
+		// trigger the callback (in this particular case, it will, because
+		// there are no other tasks left)
+		setTimeout(
+			fileLoadTrigger.wrap(
+				'file',
+				function () {
+					return 'Could not load file in 2 seconds';
+				}
+			),
+			2000
+		);
+		
+		
+		// some other group of stuff:
+		// eat a donut here
+		fileLoadTrigger.wrap(
+			'donut',
+			function () {
+				return Math.floor(Math.random()*3) + 1;
+			}
+		)();
+		
+	})();	// end of closure
+
+</script>
+</body></html>

@@ -1,5 +1,10 @@
 <html>
 <body>
+<h3>Simple sync example</h3>
+<p>
+	This example demonstrate's simple cooking process :)
+</p>
+<hr />
 <script src="waitsync.js"></script>
 <div id="output"></div>
 
@@ -11,52 +16,98 @@
 		p.innerHTML = p.innerHTML + "<p>"+msg+"</p>";
 	}
 
-   var chef = new WaitSync(
-  		function () {
-  			message('Starting cooking soup!');
-   	}
-   );
-  
- 	// son will finish chopping in like 4 seconds
-   setTimeout(
-  		chef.wrapGroup('ingredients', function () {
-  
-  			// when meat is done
+	/*
+	 * Creating waiting callback
+	 */
+	var chef = new WaitSync(
+  		function (result) {
+			message('Start cooking soup!');
+			
+			// a small bonus: the callback parameter contains some usefull 
+			// information about execution order
+			message('Tasks were complete in the following order: ' + result.order.join(', '));
+		}
+	);
+	
+	/*
+	 * Simple example of function wrap
+	 */
+	var meatTask = chef.wrap(
+		function () {
+			// when meat is done
   			message('Meat is ready');
-  		}),
-  		
-   	Math.floor(Math.random()*4000)		
-   );
-  
-   // daughter will finish cutting soon 
-   
-   var vegetables = {
-	    testVar: 2,
-		task: chef.wrapGroup('ingredients', function () {
+  		}
+  	);
+  	
+  	/*
+  	 * A little bit more advanced stuff:
+  	 * Wrapping can also be applied to object methods... 
+  	 * I assume you know how tricky the OOP in JS is
+  	 */
+  	var vegetables = {
+	    list: ['carrots', 'onions', 'potatoes'],
+		task: function () {
+				// notice, *this* points to *vegetables* (current 
+				// object context) rather than *chef* (WaitSync's context)
+				
 				// prepare vegetables
-				message('Vegetables are ready:' + arguments.length + " " + this.testVar);
-			})
+				message('Vegetables are ready: ' + this.list.join(', '));
+			}
+		
 	};
 	
+	// wrapping object method and substituting context:
+	vegetables.task = chef.wrap(vegetables.task, vegetables);
 	
-  setTimeout(	
+	/*
+	 * Your tasks will receive the same arguments as if you never used
+	 * the wrapping
+	 */
+	var doSomethingElse = chef.wrap(
+		function (task) {
+			message(task);
+		}
+	);
+	
+	
+	/*
+	 * This example uses setTimeout, but you got the idea :)
+	 */
+
+	// son will finish chopping in like 4 seconds
+	setTimeout(
+		meatTask,
+		Math.floor(Math.random()*4000)
+	);
+	
+	// daughter will finish cutting soon 
+	setTimeout(	
+		vegetables.task,
+		Math.floor(Math.random()*4000)
+	);
+	
+	// example of arguments being passed to task
+	setTimeout(	
 		function () {
-			vegetables.testVar = '(context passed)';
-			vegetables.task(1,2 ,3 ,4,5);
+			doSomethingElse("Water is boiled");
 		},
-  		Math.floor(Math.random()*4000)
-   );
-  
-   var soupWithNoodles = false;
-   if (soupWithNoodles) {
-  		setTimeout(
-  			chef.wrap(function () {
-  				message('Noodles are ready');
-  			}),
-  			1000
-  		);
-   }
- 
+		Math.floor(Math.random()*4000)
+	);
+		
+
+	// example of execution flow:
+	// Notice that since soupWithNodles = false, additional task is not
+	// added to wait list
+	var soupWithNoodles = false;
+	if (soupWithNoodles) {
+		setTimeout(
+			chef.wrap(function () {
+				message('Noodles are ready');
+			}),
+			1000
+		);
+	}
+
 
 </script>
 </body></html>
